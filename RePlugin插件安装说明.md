@@ -28,7 +28,7 @@ RePlugin.install(apkPath);
 
 然而安装外置插件需要经过下列步骤，包括：
 
-1. 确保你的apk文件存在并有读写权限（写权限非必须，RePluginConfig.setMoveFileWhenInstalling() ）。
+1. 确保你的apk文件存在并有读写权限（非必须，RePlugin会复制或剪切apk文件到内置存储空间，由RePluginConfig.setMoveFileWhenInstalling()设置。外置存储读写权限参考android权限）。
 2. 签名校验（非必须，RePluginConfig.setVerifySign()，开启后需要将apk的md5签名（去掉:），通过RePlugin.addCertSignature()方法添加进去）。
 3. 读取apk的PackageInfo，并根据PackageInfo解析出PluginInfo。
 4. 插件版本校验，现支持相同版本插件覆盖安装。
