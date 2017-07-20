@@ -16,9 +16,8 @@
 
 package com.qihoo360.replugin;
 
+import com.qihoo360.replugin.utils.ReflectUtils;
 import com.qihoo360.replugin.helper.LogDebug;
-
-import com.qihoo360.replugin.ext.lang3.reflect.MethodUtils;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -63,7 +62,7 @@ public class PluginDexClassLoader extends DexClassLoader {
     private static void initMethods(ClassLoader cl) {
         Class<?> clz = cl.getClass();
         if (sLoadClassMethod == null) {
-            sLoadClassMethod = MethodUtils.getMatchingMethod(clz, "loadClass", String.class, Boolean.TYPE);
+            sLoadClassMethod = ReflectUtils.getMethod(clz, "loadClass", String.class, Boolean.TYPE);
             if (sLoadClassMethod == null) {
                 throw new NoSuchMethodError("loadClass");
             }
@@ -85,6 +84,7 @@ public class PluginDexClassLoader extends DexClassLoader {
                 return pc;
             }
         } catch (ClassNotFoundException e) {
+            // Do not throw "e" now
             cnfException = e;
         }
 
@@ -92,23 +92,35 @@ public class PluginDexClassLoader extends DexClassLoader {
         // 注意：需要读取isUseHostClassIfNotFound开关。默认为关闭的。可参见该开关的说明
         if (RePlugin.getConfig().isUseHostClassIfNotFound()) {
             try {
-                pc = (Class<?>) sLoadClassMethod.invoke(mHostClassLoader, className, resolve);
-                if (pc != null) {
-                    // 只有开启“详细日志”才会输出，防止“刷屏”现象
-                    if (LogDebug.LOG && RePlugin.getConfig().isPrintDetailLog()) {
-                        LogDebug.w(TAG, "loadClass: load host class, cn=" + className);
-                    }
-                }
-            } catch (IllegalAccessException e) {
-                // Just rethrow
-                throw new ClassNotFoundException("iae", e);
-            } catch (InvocationTargetException e) {
-                // Just rethrow
-                throw new ClassNotFoundException("ite", e);
+                return loadClassFromHost(className, resolve);
+            } catch (ClassNotFoundException e) {
+                // Do not throw "e" now
+                cnfException = e;
             }
-        } else if (cnfException != null) {
+        }
+
+        // At this point we can throw the previous exception
+        if (cnfException != null) {
             throw cnfException;
         }
-        return pc;
+        return null;
+    }
+
+    private Class<?> loadClassFromHost(String className, boolean resolve) throws ClassNotFoundException {
+        Class<?> c;
+        try {
+            c = (Class<?>) sLoadClassMethod.invoke(mHostClassLoader, className, resolve);
+            // 只有开启“详细日志”才会输出，防止“刷屏”现象
+            if (LogDebug.LOG && RePlugin.getConfig().isPrintDetailLog()) {
+                LogDebug.w(TAG, "loadClass: load host class, cn=" + className + ", cz=" + c);
+            }
+        } catch (IllegalAccessException e) {
+            // Just rethrow
+            throw new ClassNotFoundException("Calling the loadClass method failed (IllegalAccessException)", e);
+        } catch (InvocationTargetException e) {
+            // Just rethrow
+            throw new ClassNotFoundException("Calling the loadClass method failed (InvocationTargetException)", e);
+        }
+        return c;
     }
 }

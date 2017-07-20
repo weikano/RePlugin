@@ -24,16 +24,14 @@ import com.qihoo360.replugin.helper.LogDebug;
 import com.qihoo360.replugin.helper.LogRelease;
 import com.qihoo360.replugin.model.PluginInfo;
 
-import com.qihoo360.replugin.ext.io.Charsets;
-import com.qihoo360.replugin.ext.io.IOUtils;
+import com.qihoo360.replugin.utils.CloseableUtils;
+import com.qihoo360.replugin.utils.FileUtils;
 
 import java.io.File;
-import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 
 import static com.qihoo360.replugin.helper.LogDebug.LOG;
-import static com.qihoo360.replugin.helper.LogDebug.PLUGIN_TAG;
 import static com.qihoo360.replugin.helper.LogRelease.LOGR;
 
 /**
@@ -44,26 +42,6 @@ public class AssetsUtils {
     private static final String TAG = LogDebug.PLUGIN_TAG;
 
     /**
-     * @param context
-     * @param name
-     * @return
-     */
-    public static final String readUTF8(Context context, String name) {
-        InputStream is = null;
-        try {
-            is = context.getAssets().open(name);
-            return IOUtils.toString(is, Charsets.UTF_8);
-        } catch (Throwable e) {
-            if (LOGR) {
-                LogRelease.e(TAG, e.getMessage(), e);
-            }
-        } finally {
-            IOUtils.closeQuietly(is);
-        }
-        return null;
-    }
-
-    /**
      * 提取文件到目标位置
      * @param context
      * @param name asset名称（asset的相对路径，可包含子路径）
@@ -72,26 +50,23 @@ public class AssetsUtils {
      */
     public static final boolean extractTo(Context context, final String name, final String dir, final String dstName) {
         File file = new File(dir + "/" + dstName);
-        InputStream is = null;
-        OutputStream os = null;
-        try {
-            is = context.getAssets().open(name);
-            os = new FileOutputStream(file);
-            byte bs[] = new byte[4096];
-            int rc;
-            while ((rc = is.read(bs)) >= 0) {
-                if (rc > 0) {
-                    os.write(bs, 0, rc);
-                }
+        InputStream is = FileUtils.openInputStreamFromAssetsQuietly(context, name);
+        if (is == null) {
+            if (LOG) {
+                LogDebug.e(TAG, "extractTo: Fail to open " + name + "from Assets");
             }
+            return false;
+        }
+
+        try {
+            FileUtils.copyInputStreamToFile(is, file);
             return true;
-        } catch (Throwable e) {
+        } catch (IOException e) {
             if (LOGR) {
-                LogRelease.e(PLUGIN_TAG, e.getMessage(), e);
+                e.printStackTrace();
             }
         } finally {
-            IOUtils.closeQuietly(is);
-            IOUtils.closeQuietly(os);
+            CloseableUtils.closeQuietly(is);
         }
 
         return false;

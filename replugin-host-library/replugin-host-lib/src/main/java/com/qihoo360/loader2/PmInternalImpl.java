@@ -29,16 +29,14 @@ import com.qihoo360.i.Factory;
 import com.qihoo360.i.Factory2;
 import com.qihoo360.i.IPluginActivityManager;
 import com.qihoo360.i.IPluginManager;
-import com.qihoo360.loader.utils.ReflectUtils;
 import com.qihoo360.replugin.RePlugin;
 import com.qihoo360.replugin.base.IPC;
 import com.qihoo360.replugin.component.activity.ActivityInjector;
-import com.qihoo360.replugin.ext.lang3.ClassUtils;
-import com.qihoo360.replugin.ext.lang3.reflect.FieldUtils;
 import com.qihoo360.replugin.helper.HostConfigHelper;
 import com.qihoo360.replugin.helper.LogDebug;
 import com.qihoo360.replugin.helper.LogRelease;
 import com.qihoo360.replugin.model.PluginInfo;
+import com.qihoo360.replugin.utils.ReflectUtils;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -86,16 +84,19 @@ class PmInternalImpl implements IPluginActivityManager {
         String plugin = intent.getStringExtra(IPluginManager.KEY_PLUGIN);
 
         /* 检查是否是动态注册的类 */
-        // 如果要启动的 Activity 是动态注册的类，则直接启动，不经过 SDK。
-        ComponentName componentName = activity.getComponentName();
-        if (LogDebug.LOG) {
-            LogDebug.d("loadClass", "isHookingClass(" + plugin + "," + componentName.getClassName() + ") = "
-                    + isDynamicClass(plugin, componentName.getClassName()));
-        }
-        if (isDynamicClass(plugin, componentName.getClassName())) {
-            intent.setComponent(new ComponentName(IPC.getPackageName(), componentName.getClassName()));
-            activity.startActivity(intent);
-            return true;
+        // 如果要启动的 Activity 是动态注册的类，则不使用坑位机制，而是直接动态类。
+        // 原因：宿主的某些动态注册的类不能运行在坑位中（如'桌面'插件的入口Activity）
+        ComponentName componentName = intent.getComponent();
+        if (componentName != null) {
+            if (LogDebug.LOG) {
+                LogDebug.d("loadClass", "isHookingClass(" + plugin + "," + componentName.getClassName() + ") = "
+                        + isDynamicClass(plugin, componentName.getClassName()));
+            }
+            if (isDynamicClass(plugin, componentName.getClassName())) {
+                intent.setComponent(new ComponentName(IPC.getPackageName(), componentName.getClassName()));
+                activity.startActivity(intent);
+                return true;
+            }
         }
 
         if (TextUtils.isEmpty(plugin)) {
@@ -184,7 +185,9 @@ class PmInternalImpl implements IPluginActivityManager {
             }
         }
 
-        // 如果是 activity 是动态注册的类，则直接打开
+        /* 检查是否是动态注册的类 */
+        // 如果要启动的 Activity 是动态注册的类，则不使用坑位机制，而是直接动态类。
+        // 原因：宿主的某些动态注册的类不能运行在坑位中（如'桌面'插件的入口Activity）
         if (LOG) {
             LogDebug.d("loadClass", "isHookingClass(" + plugin + " , " + activity + ") = "
                     + Factory2.isDynamicClass(plugin, activity));
@@ -680,11 +683,13 @@ class PmInternalImpl implements IPluginActivityManager {
     private static int getDefaultThemeId() {
         if (HostConfigHelper.ACTIVITY_PIT_USE_APPCOMPAT) {
             try {
-                Class clazz = ClassUtils.getClass("android.support.v7.appcompat.R$style");
-                return (int) FieldUtils.readStaticField(clazz, "Theme_AppCompat", true);
+                Class clazz = ReflectUtils.getClass("android.support.v7.appcompat.R$style");
+                return (int) ReflectUtils.readStaticField(clazz, "Theme_AppCompat");
             } catch (ClassNotFoundException e) {
                 e.printStackTrace();
             } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            } catch (NoSuchFieldException e) {
                 e.printStackTrace();
             }
         }
