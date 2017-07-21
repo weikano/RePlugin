@@ -31,7 +31,6 @@ import android.text.TextUtils;
 
 import com.qihoo360.i.Factory;
 import com.qihoo360.i.IModule;
-import com.qihoo360.i.IPluginActivityManager;
 import com.qihoo360.i.IPluginManager;
 import com.qihoo360.replugin.utils.ReflectUtils;
 import com.qihoo360.mobilesafe.api.Tasks;
@@ -160,12 +159,12 @@ class PmBase {
     /**
      *
      */
-    IPluginManager mLocal;
+    PluginCommImpl mLocal;
 
     /**
      *
      */
-    IPluginActivityManager mInternal;
+    PluginLibraryInternalProxy mInternal;
 
     /**
      * insertNewPlugin 时使用的线程锁
@@ -222,10 +221,10 @@ class PmBase {
         mClient = new PluginProcessPer(context, this, PluginManager.sPluginProcessIndex, mContainerActivities);
 
         //
-        mLocal = new PmLocalImpl(context, this);
+        mLocal = new PluginCommImpl(context, this);
 
         //
-        mInternal = new PmInternalImpl(this);
+        mInternal = new PluginLibraryInternalProxy(this);
     }
 
     void init() {
@@ -353,7 +352,17 @@ class PmBase {
             return;
         }
         for (PluginInfo info : plugins) {
-            mPlugins.put(info.getName(), Plugin.build(info));
+            Plugin plugin = Plugin.build(info);
+            putPluginObject(info, plugin);
+        }
+    }
+
+    private void putPluginObject(PluginInfo info, Plugin plugin) {
+        // 同时加入PackageName和Alias（如有）
+        mPlugins.put(info.getPackageName(), plugin);
+        if (!TextUtils.isEmpty(info.getAlias())) {
+            // 即便Alias和包名相同也可以再Put一次，反正只是覆盖了相同Value而已
+            mPlugins.put(info.getAlias(), plugin);
         }
     }
 
@@ -449,6 +458,10 @@ class PmBase {
             }
         }
         return false;
+    }
+
+    final void removeDynamicClass(String className) {
+        mDynamicClasses.remove(className);
     }
 
     /**
@@ -998,17 +1011,17 @@ class PmBase {
                 (info.getPendingUpdate() != null && !RePlugin.isPluginRunning(info.getName()));
     }
 
-    final Plugin loadPackageInfoPlugin(String plugin, IPluginManager pm) {
+    final Plugin loadPackageInfoPlugin(String plugin, PluginCommImpl pm) {
         Plugin p = Plugin.cloneAndReattach(mContext, mPlugins.get(plugin), mClassLoader, pm);
         return loadPlugin(p, Plugin.LOAD_INFO, true);
     }
 
-    final Plugin loadResourcePlugin(String plugin, IPluginManager pm) {
+    final Plugin loadResourcePlugin(String plugin, PluginCommImpl pm) {
         Plugin p = Plugin.cloneAndReattach(mContext, mPlugins.get(plugin), mClassLoader, pm);
         return loadPlugin(p, Plugin.LOAD_RESOURCES, true);
     }
 
-    final Plugin loadDexPlugin(String plugin, IPluginManager pm) {
+    final Plugin loadDexPlugin(String plugin, PluginCommImpl pm) {
         Plugin p = Plugin.cloneAndReattach(mContext, mPlugins.get(plugin), mClassLoader, pm);
         return loadPlugin(p, Plugin.LOAD_DEX, true);
     }
@@ -1018,7 +1031,7 @@ class PmBase {
     }
 
     // 底层接口
-    final Plugin loadPlugin(PluginInfo pi, IPluginManager pm, int loadType, boolean useCache) {
+    final Plugin loadPlugin(PluginInfo pi, PluginCommImpl pm, int loadType, boolean useCache) {
         Plugin p = Plugin.build(pi);
         p.attach(mContext, mClassLoader, pm);
         return loadPlugin(p, loadType, useCache);
@@ -1084,7 +1097,9 @@ class PmBase {
             }
             Plugin plugin = Plugin.build(info);
             plugin.attach(mContext, mClassLoader, mLocal);
-            mPlugins.put(info.getName(), plugin);
+
+            // 同时加入PackageName和Alias（如有）
+            putPluginObject(info, plugin);
         }
     }
 
