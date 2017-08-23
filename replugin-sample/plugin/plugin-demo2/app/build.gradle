@@ -26,11 +26,12 @@ android {
     buildToolsVersion '25.0.0'
 
     defaultConfig {
-        versionName "1.0"
-        versionCode 100
+        versionName "1.1"
+        versionCode 104
         targetSdkVersion 21
         applicationId "com.qihoo360.replugin.sample.demo2"
         minSdkVersion 15
+        multiDexEnabled false
     }
 
     buildTypes {
@@ -65,5 +66,9 @@ repluginPluginConfig {
 dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
     compile 'com.android.support:appcompat-v7:25.3.1'
-    compile 'com.qihoo360.replugin:replugin-plugin-lib:2.1.6'
+    compile 'com.qihoo360.replugin:replugin-plugin-lib:2.2.0'
+}
+
+if (android.defaultConfig.multiDexEnabled) {
+    apply from: 'case.gradle'
 }

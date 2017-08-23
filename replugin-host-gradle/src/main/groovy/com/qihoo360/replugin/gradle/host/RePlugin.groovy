@@ -228,7 +228,10 @@ class RepluginConfig {
     /** 自定义进程的数量(除 UI 和 Persistent 进程) */
     def countProcess = 3
 
-    /** 常驻进程名称（暂未使用）*/
+    /** 是否使用常驻进程？ */
+    def persistentEnable = true
+
+    /** 常驻进程名称（也就是上面说的 Persistent 进程，开发者可自定义）*/
     def persistentName = ':GuardService'
 
     /** 背景不透明的坑的数量 */
@@ -237,11 +240,11 @@ class RepluginConfig {
     def countNotTranslucentSingleTask = 3
     def countNotTranslucentSingleInstance = 2
 
-    /** 背景透明的坑的数量（每种 launchMode 相同） */
+    /** 背景透明的坑的数量 */
     def countTranslucentStandard = 2
     def countTranslucentSingleTop = 2
     def countTranslucentSingleTask = 2
-    def countTranslucentSingleInstance = 2
+    def countTranslucentSingleInstance = 3
 
     /** 宿主中声明的 TaskAffinity 的组数 */
     def countTask = 2

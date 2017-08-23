@@ -19,7 +19,7 @@
  */
 apply plugin: 'com.android.library'
 
-version = "2.1.7"
+version = "2.2.0"
 group = 'com.qihoo360.replugin'  // 组名
 
 android {
@@ -30,11 +30,10 @@ android {
         minSdkVersion 9
         targetSdkVersion 25
 
-        testVariants.all {
-            it.mergedFlavor.manifestPlaceholders = [persistentName: ":GuardService"]
-        }
-
+        versionCode 2
+        versionName version
         consumerProguardFiles 'replugin-rules.pro'
+
     }
 
     lintOptions {

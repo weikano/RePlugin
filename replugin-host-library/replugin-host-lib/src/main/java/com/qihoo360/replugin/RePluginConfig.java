@@ -42,7 +42,7 @@ public final class RePluginConfig {
     private File pnInstallDir;
     private boolean verifySign = false;
     private boolean persistentEnable = true;
-    private String persistentName = RePluginConstants.PERSISTENT_NAME_DEFAULT;
+
     private boolean useHostClassIfNotFound = false;
     private boolean moveFileWhenInstalling = true;
     private boolean printDetailLog = false;
@@ -140,55 +140,6 @@ public final class RePluginConfig {
             return this;
         }
         this.verifySign = verifySign;
-        return this;
-    }
-
-    /**
-     * 是否开启"双进程"模式？
-     *
-     * @return 是否开启
-     */
-    public boolean isPersistentEnable() {
-        return persistentEnable;
-    }
-
-    /**
-     * 设置是否允许开启"双进程"模式，开启后会极大的提升插件加载和获取的性能 <p>
-     * TODO 尚不支持单进程模式，在以后会开发
-     *
-     * @param persistentEnable 是否开启
-     * @return RePluginConfig自己。这样可以连环调用set方法
-     */
-    public RePluginConfig setPersistentEnable(boolean persistentEnable) {
-        if (!checkAllowModify()) {
-            return this;
-        }
-        this.persistentEnable = persistentEnable;
-        return this;
-    }
-
-    /**
-     * 获取"常驻进程的名称"，通常无需调用此方法，而是调用RePlugin.getPersistentName即可。 <p>
-     * 注意：这里和RePlugin.getPersistentName方法不同，前者是获取"用户设置的"常驻进程名，后者是最终确认的常驻进程名
-     *
-     * @return 常驻进程名
-     */
-    public String getPersistentName() {
-        return persistentName;
-    }
-
-    /**
-     * 设置常驻进程名。请参见replugin.gradle文件以了解更多信息 <p>
-     * 注意：除非用默认名（:GuardService），否则在replugin.gradle修改了常驻进程名后，请必须再调用此方法
-     *
-     * @param persistentName 常驻进程名
-     * @return RePluginConfig自己。这样可以连环调用set方法
-     */
-    public RePluginConfig setPersistentName(String persistentName) {
-        if (!checkAllowModify()) {
-            return this;
-        }
-        this.persistentName = persistentName;
         return this;
     }
 

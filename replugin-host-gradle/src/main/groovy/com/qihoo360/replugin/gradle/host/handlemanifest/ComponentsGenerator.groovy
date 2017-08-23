@@ -29,6 +29,8 @@ class ComponentsGenerator {
     def static final process = 'android:process'
     def static final task = 'android:taskAffinity'
     def static final launchMode = 'android:launchMode'
+    def static final authorities = 'android:authorities'
+    def static final multiprocess = 'android:multiprocess'
 
     def static final cfg = 'android:configChanges'
     def static final cfgV = 'keyboard|keyboardHidden|orientation|screenSize'
@@ -42,7 +44,7 @@ class ComponentsGenerator {
     def static final theme = 'android:theme'
     def static final themeTS = '@android:style/Theme.Translucent.NoTitleBar'
 
-    def static final THEME_NTS_NOT_APP_COMPAT = '@style/Theme.AppCompat'
+    def static final THEME_NTS_USE_APP_COMPAT = '@style/Theme.AppCompat'
     def static final THEME_NTS_NOT_USE_APP_COMPAT = '@android:style/Theme.NoTitleBar'
     def static themeNTS = THEME_NTS_NOT_USE_APP_COMPAT
 
@@ -56,7 +58,7 @@ class ComponentsGenerator {
     def static generateComponent(def applicationID, def config) {
         // 是否使用 AppCompat 库（涉及到默认主题）
         if (config.useAppCompat) {
-            themeNTS = THEME_NTS_NOT_APP_COMPAT
+            themeNTS = THEME_NTS_USE_APP_COMPAT
         } else {
             themeNTS = THEME_NTS_NOT_USE_APP_COMPAT
         }
@@ -66,6 +68,36 @@ class ComponentsGenerator {
 
         /* UI 进程 */
         xml.application {
+
+            /* 需要编译期动态修改进程名的组件*/
+
+            String pluginMgrProcessName = config.persistentEnable ? config.persistentName : applicationID
+
+            // 常驻进程Provider
+            provider(
+                    "${name}":"com.qihoo360.replugin.component.process.ProcessPitProviderPersist",
+                    "${authorities}":"${applicationID}.loader.p.main",
+                    "${exp}":"false",
+                    "${process}":"${pluginMgrProcessName}")
+
+            provider(
+                    "${name}":"com.qihoo360.replugin.component.provider.PluginPitProviderPersist",
+                    "${authorities}":"${applicationID}.Plugin.NP.PSP",
+                    "${exp}":"false",
+                    "${process}":"${pluginMgrProcessName}")
+
+            // ServiceManager 服务框架
+            provider(
+                    "${name}":"com.qihoo360.mobilesafe.svcmanager.ServiceProvider",
+                    "${authorities}":"${applicationID}.svcmanager",
+                    "${exp}":"false",
+                    "${multiprocess}":"false",
+                    "${process}":"${pluginMgrProcessName}")
+
+            service(
+                    "${name}":"com.qihoo360.replugin.component.service.server.PluginPitServiceGuard",
+                    "${process}":"${pluginMgrProcessName}")
+
             /* 透明坑 */
             config.countTranslucentStandard.times {
                 activity(
