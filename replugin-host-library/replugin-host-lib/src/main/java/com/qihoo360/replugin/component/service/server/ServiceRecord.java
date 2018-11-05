@@ -30,7 +30,7 @@ import java.util.ArrayList;
 /**
  * 用来表示一个Service对象的信息
  * 包含绑定此Service的连接信息、Intent绑定信息等
- *
+ * <p>
  * NOTE 类似于Android的ServiceRecord
  *
  * @author RePlugin Team
@@ -53,6 +53,9 @@ class ServiceRecord {
 
     // Service对象
     Service service;
+
+    // 替当前 "插件服务" 在AMS中占坑的组件
+    ComponentName pitComponentName;
 
     // 是否调用过startService且没有停止
     boolean startRequested;
@@ -107,6 +110,18 @@ class ServiceRecord {
 
     @Override
     public String toString() {
-        return "[srv=" + service.getClass().getName() + "; startRequested=" + startRequested + "; bindings=(" + bindings.size() + ") " + bindings + "]";
+        return "[srv=" + service == null ? "null" : service.getClass().getName() + "; startRequested=" + startRequested + "; bindings=(" + bindings.size() + ") " + bindings + "]";
+    }
+
+    public String getPlugin() {
+        return plugin;
+    }
+
+    public ComponentName getPitComponentName() {
+        return pitComponentName;
+    }
+
+    public ServiceInfo getServiceInfo() {
+        return serviceInfo;
     }
 }

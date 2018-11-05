@@ -5,7 +5,8 @@
 </p>
 
 [![license](http://img.shields.io/badge/license-Apache2.0-brightgreen.svg?style=flat)](https://github.com/Qihoo360/RePlugin/blob/master/LICENSE)
-[![Release Version](https://img.shields.io/badge/release-2.2.0-brightgreen.svg)](https://github.com/Qihoo360/RePlugin/wiki/%E5%8F%91%E8%A1%8C%E6%B3%A8%E8%AE%B0)
+[![Release Version](https://img.shields.io/badge/release-2.2.4-brightgreen.svg)](https://github.com/Qihoo360/RePlugin/releases)
+
 
 
 ## RePlugin —— A flexible, stable, easy-to-use Android Plug-in Framework
@@ -106,8 +107,8 @@ If you **have any question, please [click here to read FAQ(Chinese Version)](htt
         <td><b><a href="http://www.jielem.com/">JieLeMa</a></b></td>
     </tr>
     <tr align="center">
-        <td><img src="https://github.com/Qihoo360/RePlugin/wiki/img/apps/os.png" width="80" height="80"/></td>
-        <td><img src="https://github.com/Qihoo360/RePlugin/wiki/img/apps/jietiao.png" width="80" height="80"/></td>
+        <td><img src="https://raw.githubusercontent.com/wiki/Qihoo360/RePlugin/img/apps/qihoo_os.jpg" width="80" height="80"/></td>
+        <td><img src="https://raw.githubusercontent.com/wiki/Qihoo360/RePlugin/img/apps/qihoo_jietiao.jpg" width="80" height="80"/></td>
         <td><img src="https://github.com/Qihoo360/RePlugin/wiki/img/apps/yourapps.png" width="80" height="80"/></td>
         <td><img src="https://github.com/Qihoo360/RePlugin/wiki/img/apps/yourapps.png" width="80" height="80"/></td>
         <td><img src="https://github.com/Qihoo360/RePlugin/wiki/img/apps/yourapps.png" width="80" height="80"/></td>

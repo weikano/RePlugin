@@ -17,7 +17,6 @@
 package com.qihoo360.replugin.packages;
 
 import android.content.Context;
-import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -28,11 +27,9 @@ import android.text.TextUtils;
 import com.qihoo360.loader2.CertUtils;
 import com.qihoo360.loader2.MP;
 import com.qihoo360.loader2.PluginNativeLibsHelper;
-import com.qihoo360.mobilesafe.api.Tasks;
 import com.qihoo360.replugin.RePlugin;
 import com.qihoo360.replugin.RePluginEventCallbacks;
 import com.qihoo360.replugin.RePluginInternal;
-import com.qihoo360.replugin.base.IPC;
 import com.qihoo360.replugin.helper.LogDebug;
 import com.qihoo360.replugin.helper.LogRelease;
 import com.qihoo360.replugin.model.PluginInfo;
@@ -61,6 +58,12 @@ import static com.qihoo360.replugin.helper.LogDebug.LOG;
 public class PluginManagerServer {
 
     private static final String TAG = "PluginManagerServer";
+    /*** 非法类型的插件*/
+    public static final int PLUGIN_TYPE_INVALID = 0;
+    /*** PN类型的插件*/
+    public static final int PLUGIN_TYPE_PN = 1;
+    /*** APK类型的插件*/
+    public static final int PLUGIN_TYPE_APK = 2;
 
     private static final byte[] LOCKER_PROCESS_KILLED = new byte[0];
     private static final byte[] LOCKER = new byte[0];
@@ -161,7 +164,7 @@ public class PluginManagerServer {
             if (checkResult < 0) {
                 RePlugin.getConfig().getEventCallbacks().onInstallPluginFailed(path, RePluginEventCallbacks.InstallResult.VERIFY_VER_FAIL);
                 return null;
-            } else if (checkResult == 0){
+            } else if (checkResult == 0) {
                 instPli.setIsPendingCover(true);
             }
         }
@@ -207,7 +210,7 @@ public class PluginManagerServer {
     private int checkVersion(PluginInfo instPli, PluginInfo curPli) {
         // 支持插件同版本覆盖安装？
         // 若现在要安装的，与之前的版本相同，则覆盖掉之前的版本；
-        if (instPli.getVersion() == curPli.getVersion()) {
+        if (instPli.getVersion() == curPli.getVersion() && getPluginType(instPli) == getPluginType(curPli)) {
             if (LogDebug.LOG) {
                 LogDebug.d(TAG, "isSameVersion: same version. " +
                         "inst_ver=" + instPli.getVersion() + "; cur_ver=" + curPli.getVersion());
@@ -284,10 +287,6 @@ public class PluginManagerServer {
 
             // 由于"打算要更新"的前提是插件正在被运行，且下次重启时会清空这个信息，既然这次只是替换"打算要更新"的插件信息
             // 则不必再做后面诸如"插件是否存在"等判断，直接返回即可
-
-            // FIXME 检查是否应该Use
-            // instPli.setType(PluginInfo.TYPE_LATER_UPDATE);
-            // curPli.setPendingUpdate(instPli);
             return;
         }
 
@@ -296,7 +295,8 @@ public class PluginManagerServer {
             if (LogDebug.LOG) {
                 LogDebug.w(TAG, "updateOrLater: Plugin is running. Later. pn=" + curPli.getName());
             }
-            if (instPli.getVersion() > curPli.getVersion()) {
+            if (instPli.getVersion() > curPli.getVersion() ||
+                    instPli.getVersion() == curPli.getVersion() && getPluginType(instPli) != getPluginType(curPli)) {
                 // 高版本升级
                 curPli.setPendingUpdate(instPli);
                 curPli.setPendingDelete(null);
@@ -304,7 +304,7 @@ public class PluginManagerServer {
                 if (LogDebug.LOG) {
                     LogDebug.w(TAG, "updateOrLater: Plugin need update high version. clear PendingDelete and PendingCover.");
                 }
-            } else if (instPli.getVersion() == curPli.getVersion()){
+            } else if (instPli.getVersion() == curPli.getVersion()) {
                 // 同版本覆盖
                 curPli.setPendingCover(instPli);
                 curPli.setPendingDelete(null);
@@ -324,6 +324,10 @@ public class PluginManagerServer {
         }
     }
 
+    private static int getPluginType(PluginInfo pluginInfo) {
+        return pluginInfo == null ? PLUGIN_TYPE_INVALID : pluginInfo.isPnPlugin() ? PLUGIN_TYPE_PN : PLUGIN_TYPE_APK;
+    }
+
     private void updatePendingUpdate(PluginInfo curPli, PluginInfo instPli, PluginInfo curUpdatePli) {
         if (curUpdatePli.getVersion() < instPli.getVersion()) {
             // 现在的版本比之前"打算要更新"的版本还要新（形象的称之为“夹心层”），则删除掉该“夹心层”的版本，然后换成这个更新的
@@ -332,6 +336,9 @@ public class PluginManagerServer {
                 LogDebug.i(TAG, "updatePendingUpdate: Found newer plugin, replace. pn=" + curPli.getName() + "; " +
                         "cur_ver=" + curPli.getVersion() + "; old_ver=" + curUpdatePli.getVersion() + "; new_ver=" + instPli.getVersion());
             }
+
+            // 设置待更新版本至最大版本
+            curPli.setPendingUpdate(instPli);
 
             // 删除“夹心层”插件文件
             try {
@@ -418,6 +425,9 @@ public class PluginManagerServer {
 
         if (covered) {
             curInfo.setPendingCover(null);
+            newInfo.setIsPendingCover(false);
+            //修改isPendingCover属性后必须同时修改json中的path路径
+            newInfo.setPath(newInfo.getApkFile().getPath());
         } else {
             curInfo.update(newInfo);
             curInfo.setPendingUpdate(null);
@@ -425,6 +435,9 @@ public class PluginManagerServer {
     }
 
     private void move(@NonNull PluginInfo curPi, @NonNull PluginInfo newPi) {
+        if (LogDebug.LOG) {
+            LogDebug.i(TAG, "move. curPi=" + curPi.getPath() + "; newPi=" + newPi.getPath());
+        }
         try {
             FileUtils.copyFile(newPi.getApkFile(), curPi.getApkFile());
 
@@ -452,6 +465,10 @@ public class PluginManagerServer {
                 if (LogRelease.LOGR) {
                     e.printStackTrace();
                 }
+            } catch (IllegalArgumentException e2) {
+                if (LogRelease.LOGR) {
+                    e2.printStackTrace();
+                }
             }
         }
     }
@@ -467,6 +484,10 @@ public class PluginManagerServer {
         } catch (IOException e) {
             if (LogRelease.LOGR) {
                 e.printStackTrace();
+            }
+        } catch (IllegalArgumentException e2) {
+            if (LogRelease.LOGR) {
+                e2.printStackTrace();
             }
         }
     }
@@ -526,21 +547,6 @@ public class PluginManagerServer {
         mList.remove(info.getName());
         mList.save(mContext);
 
-        // 3. 给各进程发送广播，同步更新
-        final Intent intent = new Intent(PluginInfoUpdater.ACTION_UNINSTALL_PLUGIN);
-        intent.putExtra("obj", info);
-        // 注意：若在attachBaseContext中调用此方法，则由于此时getApplicationContext为空，导致发送广播时会出现空指针异常。
-        // 则应该Post一下，待getApplicationContext有值后再发送广播。
-        if (RePluginInternal.getAppContext().getApplicationContext() != null) {
-            IPC.sendLocalBroadcast2AllSync(RePluginInternal.getAppContext(), intent);
-        } else {
-            Tasks.post2UI(new Runnable() {
-                @Override
-                public void run() {
-                    IPC.sendLocalBroadcast2All(RePluginInternal.getAppContext(), intent);
-                }
-            });
-        }
         return true;
     }
 
@@ -598,7 +604,7 @@ public class PluginManagerServer {
         l.add(pluginName);
 
         if (LogDebug.LOG) {
-            LogDebug.d(TAG, "addToRunningPluginsLocked: Added! pl =" + l +"; map=" + mProcess2PluginsMap);
+            LogDebug.d(TAG, "addToRunningPluginsLocked: Added! pl =" + l + "; map=" + mProcess2PluginsMap);
         }
     }
 

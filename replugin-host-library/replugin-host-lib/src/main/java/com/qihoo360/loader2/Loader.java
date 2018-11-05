@@ -59,6 +59,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static com.qihoo360.replugin.helper.LogDebug.LOADER_TAG;
 import static com.qihoo360.replugin.helper.LogDebug.LOG;
 import static com.qihoo360.replugin.helper.LogDebug.PLUGIN_TAG;
 import static com.qihoo360.replugin.helper.LogRelease.LOGR;
@@ -189,6 +190,10 @@ class Loader {
                 mPackageInfo.applicationInfo.sourceDir = mPath;
                 mPackageInfo.applicationInfo.publicSourceDir = mPath;
 
+                if (TextUtils.isEmpty(mPackageInfo.applicationInfo.processName)) {
+                    mPackageInfo.applicationInfo.processName = mPackageInfo.applicationInfo.packageName;
+                }
+
                 // 添加针对SO库的加载
                 // 此属性最终用于ApplicationLoaders.getClassLoader，在创建PathClassLoader时成为其参数
                 // 这样findLibrary可不用覆写，即可直接实现SO的加载
@@ -310,6 +315,18 @@ class Loader {
                     parent = getClass().getClassLoader().getParent(); // TODO: 这里直接用父类加载器
                 }
                 String soDir = mPackageInfo.applicationInfo.nativeLibraryDir;
+
+                long begin = 0;
+                boolean isDexExist = false;
+
+                if (LOG) {
+                    begin = System.currentTimeMillis();
+                    File dexFile = mPluginObj.mInfo.getDexFile();
+                    if (dexFile.exists() && dexFile.length() > 0) {
+                        isDexExist = true;
+                    }
+                }
+
                 mClassLoader = RePlugin.getConfig().getCallbacks().createPluginClassLoader(mPluginObj.mInfo, mPath, out, soDir, parent);
                 Log.i("dex", "load " + mPath + " = " + mClassLoader);
 
@@ -318,6 +335,18 @@ class Loader {
                         LogDebug.d(PLUGIN_TAG, "get dex null");
                     }
                     return false;
+                }
+
+                if (LOG) {
+                    if (!isDexExist) {
+                        Log.d(LOADER_TAG, " --释放DEX, " + "(plugin=" + mPluginName + ", version=" + mPluginObj.mInfo.getVersion() + ")"
+                                + ", use:" + (System.currentTimeMillis() - begin)
+                                + ", process:" + IPC.getCurrentProcessName());
+                    } else {
+                        Log.d(LOADER_TAG, " --无需释放DEX, " + "(plugin=" + mPluginName + ", version=" + mPluginObj.mInfo.getVersion() + ")"
+                                + ", use:" + (System.currentTimeMillis() - begin)
+                                + ", process:" + IPC.getCurrentProcessName());
+                    }
                 }
 
                 // 缓存表：ClassLoader
@@ -597,7 +626,11 @@ class Loader {
     private void adjustPluginProcess(ApplicationInfo appInfo) {
         HashMap<String, String> processMap = getConfigProcessMap(appInfo);
         if (processMap == null || processMap.isEmpty()) {
-            processMap = genDynamicProcessMap();
+
+            PluginInfo pi = MP.getPlugin(mPluginName, false);
+            if (pi != null && pi.getFrameworkVersion() >= 4) {
+                processMap = genDynamicProcessMap();
+            }
         }
 
         if (LOG) {

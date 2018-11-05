@@ -18,10 +18,12 @@ package com.qihoo360.replugin.sample.demo1;
 
 import android.app.Activity;
 import android.app.Dialog;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -38,6 +40,9 @@ import android.widget.Toast;
 
 import com.qihoo360.replugin.RePlugin;
 import com.qihoo360.replugin.common.utils.TimeUtils;
+import com.qihoo360.replugin.sample.demo1.activity.file_provider.FileProviderActivity;
+import com.qihoo360.replugin.sample.demo1.activity.notify_test.NotifyActivity;
+import com.qihoo360.replugin.sample.demo1.activity.preference.PrefActivity2;
 import com.qihoo360.replugin.sample.demo1.activity.single_instance.TIActivity1;
 import com.qihoo360.replugin.sample.demo1.activity.single_top.SingleTopActivity1;
 import com.qihoo360.replugin.sample.demo1.activity.standard.StandardActivity;
@@ -45,13 +50,19 @@ import com.qihoo360.replugin.sample.demo1.activity.task_affinity.TAActivity1;
 import com.qihoo360.replugin.sample.demo1.activity.theme.ThemeBlackNoTitleBarActivity;
 import com.qihoo360.replugin.sample.demo1.activity.theme.ThemeBlackNoTitleBarFullscreenActivity;
 import com.qihoo360.replugin.sample.demo1.activity.theme.ThemeDialogActivity;
+import com.qihoo360.replugin.sample.demo1.activity.webview.WebViewActivity;
 import com.qihoo360.replugin.sample.demo1.service.PluginDemoService1;
+import com.qihoo360.replugin.sample.demo1.support.NotifyUtils;
 import com.qihoo360.replugin.sample.demo2.IDemo2;
 import com.qihoo360.replugin.sample.library.LibMainActivity;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+
+import static com.qihoo360.replugin.sample.demo1.support.NotifyUtils.ACTION_START_NOTIFY_UI;
+import static com.qihoo360.replugin.sample.demo1.support.NotifyUtils.NOTIFY_KEY;
+import static com.qihoo360.replugin.sample.demo1.support.NotifyUtils.TAG;
 
 /**
  * @author RePlugin Team
@@ -65,6 +76,10 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
 
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(ACTION_START_NOTIFY_UI);
+        registerReceiver(mIntentReceiver, filter);
+
         initData();
 
         ListView lv = (ListView) findViewById(R.id.list_view);
@@ -77,6 +92,15 @@ public class MainActivity extends Activity {
         // =========
         // Activity
         // =========
+        mItems.add(new TestItem("Jump 2 Host", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // 打开宿主Activity
+                Intent intent = new Intent();
+                intent.setClassName("com.qihoo360.replugin.sample.host", "com.qihoo360.replugin.sample.host.PluginFragmentActivity");
+                v.getContext().startActivity(intent);
+            }
+        }));
         mItems.add(new TestItem("Activity: Standard", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -323,6 +347,65 @@ public class MainActivity extends Activity {
                 v.getContext().startActivity(intent);
             }
         }));
+
+        // dump
+        mItems.add(new TestItem("dump Detail", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+//                // 打印RePlugin版本号
+//                String version = RePlugin.getVersion();
+//                Toast.makeText(MainActivity.this, "RePlugin v:" + version, Toast.LENGTH_SHORT).show();
+//
+//                // dump详细的运行信息到PrintWriter
+//                PrintWriter writer = null;
+//                try {
+//                    writer = new PrintWriter("/sdcard/dump.txt");
+//                    RePlugin.dump(null, writer, null);
+//                } catch (FileNotFoundException e) {
+//                    e.printStackTrace();
+//                } finally {
+//                    if (writer != null) {
+//                        writer.close();
+//                    }
+//                }
+            }
+        }));
+
+        // PreferenceActivity
+        mItems.add(new TestItem("Preference Activity", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(v.getContext(), PrefActivity2.class);
+                v.getContext().startActivity(intent);
+            }
+        }));
+
+        // WebView
+        mItems.add(new TestItem("WebView Activity", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(v.getContext(), WebViewActivity.class);
+                v.getContext().startActivity(intent);
+            }
+        }));
+
+        // FileProvider
+        mItems.add(new TestItem("FileProvider Activity", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(v.getContext(), FileProviderActivity.class);
+                v.getContext().startActivity(intent);
+            }
+        }));
+
+        // Notification
+        mItems.add(new TestItem("Send Notification", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                NotifyUtils.sendNotification(v.getContext().getApplicationContext());
+            }
+        }));
     }
 
     private static final int REQUEST_CODE_DEMO2 = 0x021;
@@ -333,6 +416,12 @@ public class MainActivity extends Activity {
         if (requestCode == REQUEST_CODE_DEMO2 && resultCode == RESULT_CODE_DEMO2) {
             Toast.makeText(this, data.getStringExtra("data"), Toast.LENGTH_SHORT).show();
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        unregisterReceiver(mIntentReceiver);
+        super.onDestroy();
     }
 
     private class TestAdapter extends BaseAdapter {
@@ -363,5 +452,32 @@ public class MainActivity extends Activity {
             convertView.setOnClickListener(item.mClickListener);
             return convertView;
         }
+    }
+
+    private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
+
+        @Override
+        public void onReceive(Context ctx, Intent intent) {
+            if (intent == null || TextUtils.isEmpty(intent.getAction())) {
+                return;
+            }
+            String action = intent.getAction();
+            if (TextUtils.isEmpty(action)) {
+                return;
+            }
+
+            Log.d(TAG, "onReceive. action:" + action);
+
+            if (ACTION_START_NOTIFY_UI.equals(action)) {
+                StartNotifyUI(ctx, intent.getStringExtra(NOTIFY_KEY));
+            }
+        }
+    };
+
+    private void StartNotifyUI(Context ctx, String extra) {
+        Toast.makeText(ctx, extra, Toast.LENGTH_SHORT).show();
+        Intent intent = new Intent(MainActivity.this, NotifyActivity.class);
+        intent.putExtra(NOTIFY_KEY, extra);
+        startActivity(intent);
     }
 }
