@@ -61,6 +61,10 @@ public class PMF {
     }
 
     /**
+     * {@link #setApplicationContext(Context)}将application保存至sContext </br>
+     * {@link PluginManager#init(Context)}调用{@link com.qihoo360.mobilesafe.api.Tasks.init();}初始化sMainLooper，
+     * sUid保存当前uid，sPluginProcessIndex保存当前进程name对应的int值 </br>
+     *
      * @param application
      */
     public static final void init(Application application) {

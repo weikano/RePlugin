@@ -88,6 +88,7 @@ public final class Tasks {
     }
 
     /**
+     * 用Looper.getMainLooper()初始化{@link #sMainHandler}
      * @hide 内部接口
      */
     public static final void init() {
